@@ -49,7 +49,18 @@ for i in range(number):
 for i in range(number * 2):
     angle += theta2 * 1j
     lines.append(line(np.exp(angle) * (1 + 0.00001 * i), np.exp(rightAngle * 1j + angle)))
+
     
+lines = []
+number = 70
+#theta = 1.0 / 2.03 * fullAngle
+theta = (np.sqrt(5) - 1) / 2 * fullAngle
+for i in range(number):
+    angle += theta * 1j
+#    lines.append(line(np.exp(angle) * (1 + 0.0001 * i), np.exp(rightAngle * 1j + angle)))    
+    lines.append(line(np.exp(angle) * (-0.5001 + 1.0 * i / number), np.exp(rightAngle * 1j + angle)))
+
+
 def z2xy(z):
     return (np.real(z), np.imag(z))
 
@@ -61,7 +72,11 @@ def intersection(l1, l2):
     if ((x1- x2)*(y3- y4) - (y1 - y2)*(x3 - x4)) == 0:
         return None
     else:
-        return ((x1*y2 - y1*x2) * (x3 - x4) - (x1 - x2) * (x3*y4 - y3*x4)) / ((x1- x2)*(y3- y4) - (y1 - y2)*(x3 - x4)) + ((x1*y2 - y1*x2) * (y3 - y4) - (y1 - y2) * (x3*y4 - y3*x4)) / ((x1- x2)*(y3- y4) - (y1 - y2)*(x3 - x4)) * 1j
+        ret = ((x1*y2 - y1*x2) * (x3 - x4) - (x1 - x2) * (x3*y4 - y3*x4)) / ((x1- x2)*(y3- y4) - (y1 - y2)*(x3 - x4)) + ((x1*y2 - y1*x2) * (y3 - y4) - (y1 - y2) * (x3*y4 - y3*x4)) / ((x1- x2)*(y3- y4) - (y1 - y2)*(x3 - x4)) * 1j
+        if np.abs(ret) > 10000.0:
+            return None
+        else:
+            return ret
 
 def position(l, x):
     if np.imag((x - l.somePoint) / l.direction) >= 0:
@@ -69,11 +84,13 @@ def position(l, x):
     else:
         return 1
 
+"""
 for l in lines:
-    print l
-    print position(l, origin)
-    print position(l, 3)
-
+    print(l)
+    print(position(l, origin))
+    print(position(l, 3))
+"""
+    
 def genRhomboidFaceKeys(lines):
     ret = {}
     previousIntersections = []
@@ -82,7 +99,8 @@ def genRhomboidFaceKeys(lines):
             p = intersection(lines[i1], lines[i2])
             if p <> None:
                 if p in previousIntersections:
-                    raise Error("multiple lines intersect at same point")
+                    raise ValueError("multiple lines intersect at same point", p)
+                previousIntersections.append(p)
                 retKey = ""
                 for i3 in range(len(lines)):
                     if i3 == i1:
@@ -99,13 +117,9 @@ def getRhomboidVertices(key, lines):
     for i in range(len(lines)):
         position = key[i]
         if position == 'a':
-#            ret1 -= lines[i].getNormal()
             ret2 += lines[i].getNormal()
-#            ret3 -= lines[i].getNormal()
             ret4 += lines[i].getNormal()
         if position == 'b':
-#            ret1 -= lines[i].getNormal()
-#            ret2 -= lines[i].getNormal()            
             ret3 += lines[i].getNormal()
             ret4 += lines[i].getNormal()
         if position == '1':
@@ -113,34 +127,29 @@ def getRhomboidVertices(key, lines):
             ret2 += lines[i].getNormal()
             ret3 += lines[i].getNormal()
             ret4 += lines[i].getNormal()            
-#        if position == '0':
-#            ret1 -= lines[i].getNormal()
-#            ret2 -= lines[i].getNormal()
-#            ret3 -= lines[i].getNormal()
-#            ret4 -= lines[i].getNormal()            
     return (ret1, ret2, ret3, ret4)
 
 
 height = 1000
 width = 1000
-length = 25
+length = 20
 
 def z2imgPoint(z):
     return (width / 2 + int(np.real(z * length)), height / 2 - int(np.imag(z * length)))
 
 img =  np.zeros((height,width,3), np.uint8)
-
-
 faceKeys = genRhomboidFaceKeys(lines)
 
 print "------------------------------------------------------------"
+cGreen = (0, 255, 0)
+
 for key in faceKeys:
     (v1, v2, v3, v4) = getRhomboidVertices(key, lines)
-    print key, faceKeys[key], z2imgPoint(v1), z2imgPoint(v2), z2imgPoint(v3), z2imgPoint(v4)
-    cv2.line(img = img, pt1 = z2imgPoint(v1), pt2 = z2imgPoint(v2), color = (255, 255, 255))
-    cv2.line(img = img, pt1 = z2imgPoint(v1), pt2 = z2imgPoint(v3), color = (255, 255, 255))
-    cv2.line(img = img, pt1 = z2imgPoint(v4), pt2 = z2imgPoint(v2), color = (255, 255, 255))
-    cv2.line(img = img, pt1 = z2imgPoint(v4), pt2 = z2imgPoint(v3), color = (255, 255, 255))
+#    print key, faceKeys[key], z2imgPoint(v1), z2imgPoint(v2), z2imgPoint(v3), z2imgPoint(v4)
+    cv2.line(img = img, pt1 = z2imgPoint(v1), pt2 = z2imgPoint(v2), color = cGreen)
+    cv2.line(img = img, pt1 = z2imgPoint(v1), pt2 = z2imgPoint(v3), color = cGreen)
+    cv2.line(img = img, pt1 = z2imgPoint(v4), pt2 = z2imgPoint(v2), color = cGreen)
+    cv2.line(img = img, pt1 = z2imgPoint(v4), pt2 = z2imgPoint(v3), color = cGreen)
 
 cv2.imshow('image',img)
 cv2.imwrite('test.jpg', img)
