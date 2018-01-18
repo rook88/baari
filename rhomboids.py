@@ -1,5 +1,7 @@
 import numpy as np
 import cv2
+import imageio
+#imageio.plugins.ffmpeg.download()
 
 fullAngle = 2 * np.pi
 rightAngle = 0.5 * np.pi
@@ -49,17 +51,6 @@ for i in range(number):
 for i in range(number * 2):
     angle += theta2 * 1j
     lines.append(line(np.exp(angle) * (1 + 0.00001 * i), np.exp(rightAngle * 1j + angle)))
-
-    
-lines = []
-number = 70
-#theta = 1.0 / 2.03 * fullAngle
-theta = (np.sqrt(5) - 1) / 2 * fullAngle
-for i in range(number):
-    angle += theta * 1j
-#    lines.append(line(np.exp(angle) * (1 + 0.0001 * i), np.exp(rightAngle * 1j + angle)))    
-    lines.append(line(np.exp(angle) * (-0.5001 + 1.0 * i / number), np.exp(rightAngle * 1j + angle)))
-
 
 def z2xy(z):
     return (np.real(z), np.imag(z))
@@ -130,28 +121,65 @@ def getRhomboidVertices(key, lines):
     return (ret1, ret2, ret3, ret4)
 
 
-height = 1000
-width = 1000
-length = 20
+height = 640
+width = 640
+length = 40
 
 def z2imgPoint(z):
     return (width / 2 + int(np.real(z * length)), height / 2 - int(np.imag(z * length)))
 
-img =  np.zeros((height,width,3), np.uint8)
-faceKeys = genRhomboidFaceKeys(lines)
+print("------------------------------------------------------------")
 
-print "------------------------------------------------------------"
+
 cGreen = (0, 255, 0)
+cYellow = (150, 200, 55)
 
-for key in faceKeys:
-    (v1, v2, v3, v4) = getRhomboidVertices(key, lines)
-#    print key, faceKeys[key], z2imgPoint(v1), z2imgPoint(v2), z2imgPoint(v3), z2imgPoint(v4)
-    cv2.line(img = img, pt1 = z2imgPoint(v1), pt2 = z2imgPoint(v2), color = cGreen)
-    cv2.line(img = img, pt1 = z2imgPoint(v1), pt2 = z2imgPoint(v3), color = cGreen)
-    cv2.line(img = img, pt1 = z2imgPoint(v4), pt2 = z2imgPoint(v2), color = cGreen)
-    cv2.line(img = img, pt1 = z2imgPoint(v4), pt2 = z2imgPoint(v3), color = cGreen)
 
-cv2.imshow('image',img)
+def drawRhomboid(img, v1, v2):
+    cv2.line(img = img, pt1 = z2imgPoint(v1), pt2 = z2imgPoint(v2), color = cYellow, thickness = 2)
+
+
+def drawImg(k):
+    lines = []
+    number = 20
+    theta = 1.0 / k * fullAngle
+#    theta = (np.sqrt(5) - 1) / 2 * fullAngle
+    angle = 0.0
+    for i in range(number):
+        angle += theta * 1j
+        lines.append(line(np.exp(angle) * (-2.5001 + 1.0 * i / number), np.exp(rightAngle * 1j + angle)))
+    img =  np.zeros((height,width,3), np.uint8)
+    faceKeys = genRhomboidFaceKeys(lines)
+    for key in faceKeys:
+        (v1, v2, v3, v4) = getRhomboidVertices(key, lines)
+        drawRhomboid(img, v1, v2)
+        drawRhomboid(img, v1, v3)
+        drawRhomboid(img, v2, v4)
+        drawRhomboid(img, v3, v4)
+    print("k = {} Count of Rhomboids {}".format(k, len(faceKeys)))
+    return img
+
+def genK(n):
+#    return 2.5 - 5.0 * n / frameCount
+    return 4.0 ** (1.0 * (frameCount - 1 - n) / (frameCount - 1)) * 7.0 ** (1.0 * n / (frameCount - 1))
+
+
+frameCount = 300
+ks = [genK(n) for n in range(frameCount)]
+#frames = [drawImg(k) for k in ks]
+print ks
+
+ims = []
+for k in ks:
+    img = drawImg(k)
+#    cv2.imshow('image',img)
+#    cv2.waitKey(0)
+#    cv2.destroyAllWindows()
+    ims.append(img)
+
+imageio.mimwrite(uri = 'rhomboids.mp4', ims = ims + list(reversed(ims)))#, duration = 0.05)
+
 cv2.imwrite('test.jpg', img)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+
+
+
