@@ -123,31 +123,23 @@ def getRhomboidVertices(key, lines):
 
 height = 640
 width = 640
-length = 40
+length = 20
 
 def z2imgPoint(z):
     return (width / 2 + int(np.real(z * length)), height / 2 - int(np.imag(z * length)))
 
-print("------------------------------------------------------------")
-
-
-cGreen = (0, 255, 0)
-cYellow = (150, 200, 55)
-
-
 def drawRhomboid(img, v1, v2):
-    cv2.line(img = img, pt1 = z2imgPoint(v1), pt2 = z2imgPoint(v2), color = cYellow, thickness = 2)
+    cv2.line(img = img, pt1 = z2imgPoint(v1), pt2 = z2imgPoint(v2), color = cYellow, thickness = 1)
 
-
-def drawImg(k):
+def genLines(ps, f):
     lines = []
-    number = 20
-    theta = 1.0 / k * fullAngle
-#    theta = (np.sqrt(5) - 1) / 2 * fullAngle
-    angle = 0.0
-    for i in range(number):
-        angle += theta * 1j
-        lines.append(line(np.exp(angle) * (-2.5001 + 1.0 * i / number), np.exp(rightAngle * 1j + angle)))
+    for i in ps:
+        l = line(f(i), derivative(f, i))
+#       print(l)
+        lines.append(l)
+    return lines
+    
+def drawImg(lines):
     img =  np.zeros((height,width,3), np.uint8)
     faceKeys = genRhomboidFaceKeys(lines)
     for key in faceKeys:
@@ -156,28 +148,59 @@ def drawImg(k):
         drawRhomboid(img, v1, v3)
         drawRhomboid(img, v2, v4)
         drawRhomboid(img, v3, v4)
-    print("k = {} Count of Rhomboids {}".format(k, len(faceKeys)))
+#    print("k = {} Count of Rhomboids {}".format(k, len(faceKeys)))
     return img
 
 def genK(n):
 #    return 2.5 - 5.0 * n / frameCount
     return 4.0 ** (1.0 * (frameCount - 1 - n) / (frameCount - 1)) * 7.0 ** (1.0 * n / (frameCount - 1))
 
+def derivative(f, x):
+    h = 0.0001
+    return (f(x + h) - f(x)) / h
 
-frameCount = 300
-ks = [genK(n) for n in range(frameCount)]
-#frames = [drawImg(k) for k in ks]
+cGreen = (0, 255, 0)
+cYellow = (150, 200, 55)
+frameCount = 200
+
+#ks = [range() for n in range(frameCount)]
+
+ks = [list(np.linspace(-1, 1, 25)) for n in range(frameCount)]
+
+angle = (np.sqrt(5) - 1) / 2 * fullAngle * 1j
+rotation = lambda x : x + x ** 2 * 1j
+rotation = lambda x : np.exp(angle * x)
+
+def curry(z):
+    def ret(x):
+        angle = (np.sqrt(5) - 1) / 2 * fullAngle * 1j + 5 * z * fullAngle * 1j 
+        return np.exp(angle * x)
+    return ret
+    
+fs = [(lambda x : np.exp(angle * (x + 1.0 * n / frameCount))) for n in range(frameCount)]
+fs = [(lambda x : np.exp(angle * (x + 0.1 * n))) for n in range(frameCount)]
+fs = [curry(z) for z in list(np.linspace(0, 1, frameCount + 1))][:-1]
+
+print("------------------------------------------------------------")
 print ks
+print [f(1) for f in fs]
+
+print("Rotation at point 0 = {}".format(rotation(0)))
+print("dRotation at point 0 = {}".format(derivative(rotation, 0)))
+
 
 ims = []
-for k in ks:
-    img = drawImg(k)
+for k, f in zip(ks, fs):
+    lines = genLines(k, f)
+    print("k[0] = {} f(1) = {} line[0] = {}".format(k[0], f(1), lines[0]))
+    img = drawImg(lines)
 #    cv2.imshow('image',img)
 #    cv2.waitKey(0)
 #    cv2.destroyAllWindows()
     ims.append(img)
 
 imageio.mimwrite(uri = 'rhomboids.mp4', ims = ims + list(reversed(ims)))#, duration = 0.05)
+imageio.mimwrite(uri = 'rhomboids.gif', ims = ims + list(reversed(ims)), duration = 0.04)
 
 cv2.imwrite('test.jpg', img)
 
